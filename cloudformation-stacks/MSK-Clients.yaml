@@ -1,0 +1,286 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Can contain only ASCII characters.
+  VPCStackName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: String
+    Default: MSKVPCStack
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+  GlueSchemaRegistryAccountId:
+    Description: AWS Account Id where Glue Schema Registry is used
+    Type: String
+    Default: "123456789012345"
+  YourIPAddress:
+    Description: Find your ip address https://checkip.amazonaws.com/ and provide the value here. Provide IP in the following format x.x.x.x/32
+    Type: String
+    Default: 0.0.0.0/0
+Resources:
+  PrometheusInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access via port 22 from BastionHostSecurityGroup
+      VpcId: !ImportValue
+        'Fn::Sub': '${VPCStackName}-VPCID'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 9090
+          ToPort: 9090
+          CidrIp: !Ref YourIPAddress
+        - IpProtocol: tcp
+          FromPort: 9091
+          ToPort: 9091
+          CidrIp: !Ref YourIPAddress
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: !Ref YourIPAddress
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 10.0.0.0/24
+  KafkaClientInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access via port 22 from BastionHostSecurityGroup
+      VpcId: !ImportValue
+        'Fn::Sub': '${VPCStackName}-VPCID'
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 10.0.0.0/24
+  Cloud9EC2Bastion:
+    Type: AWS::Cloud9::EnvironmentEC2
+    Properties: 
+      AutomaticStopTimeMinutes: 600
+      Description: "Cloud9 EC2 environment"
+      InstanceType: m5.large
+      Name: "Cloud9EC2Bastion"
+      SubnetId: !ImportValue
+        'Fn::Sub': '${VPCStackName}-PublicSubnetOne'
+      Tags:
+        - Key: 'Purpose'
+          Value: 'Cloud9EC2BastionHostInstance'
+  KafkaProducerEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: m5.large
+      KeyName: !Ref 'KeyName'
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      AvailabilityZone: 
+        Fn::Select:
+         - 0
+         - Fn::GetAZs: {Ref: 'AWS::Region'}
+      SubnetId: !ImportValue
+        'Fn::Sub': '${VPCStackName}-PrivateSubnetMSKOne'
+      SecurityGroupIds: [!GetAtt KafkaClientInstanceSecurityGroup.GroupId]
+      ImageId: !Ref LatestAmiId
+      Tags:
+        - Key: 'Name'
+          Value: 'KafkaProducerInstance'
+      UserData: 
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash
+            yum update -y
+            yum install python3.7 -y
+            yum install java-1.8.0-openjdk-devel -y
+            yum install nmap-ncat -y
+            yum install git -y
+            yum erase awscli -y
+            yum install jq -y
+            amazon-linux-extras install docker -y
+            service docker start
+            usermod -a -G docker ec2-user
+
+            cd /home/ec2-user
+            wget https://bootstrap.pypa.io/get-pip.py
+            su -c "python3.7 get-pip.py --user" -s /bin/sh ec2-user
+            su -c "/home/ec2-user/.local/bin/pip3 install boto3 --user" -s /bin/sh ec2-user
+            su -c "/home/ec2-user/.local/bin/pip3 install awscli --user" -s /bin/sh ec2-user
+            su -c "/home/ec2-user/.local/bin/pip3 install kafka-python --user" -s /bin/sh ec2-user
+
+            # install AWS CLI 2 - access with aws2
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            ./aws/install -b /usr/local/bin/aws2
+            su -c "ln -s /usr/local/bin/aws2/aws ~/.local/bin/aws2" -s /bin/sh ec2-user
+
+            
+            # Create dirs, get Apache Kafka 2.7.1 and unpack it
+            su -c "mkdir -p kafka271" -s /bin/sh ec2-user
+                        
+            cd /home/ec2-user
+            ln -s /home/ec2-user/kafka271 /home/ec2-user/kafka
+            cd kafka271
+            su -c "wget https://apache.mirror.digitalpacific.com.au/kafka/2.7.1/kafka_2.13-2.7.1.tgz" -s /bin/sh ec2-user
+            su -c "tar -xzf kafka_2.13-2.7.1.tgz --strip 1" -s /bin/sh ec2-user
+
+  KafkaConsumerEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: m5.large
+      KeyName: !Ref 'KeyName'
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: { Ref: 'AWS::Region' }
+      SubnetId: !ImportValue
+        'Fn::Sub': '${VPCStackName}-PrivateSubnetMSKTwo'
+      SecurityGroupIds: [ !GetAtt KafkaClientInstanceSecurityGroup.GroupId ]
+      ImageId: !Ref LatestAmiId
+      Tags:
+        - Key: 'Name'
+          Value: 'KafkaConsumerInstance'
+      UserData:
+        Fn::Base64:
+          !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install python3.7 -y
+          yum install java-1.8.0-openjdk-devel -y
+          yum install nmap-ncat -y
+          yum install git -y
+          yum erase awscli -y
+          yum install jq -y
+          amazon-linux-extras install docker -y
+          service docker start
+          usermod -a -G docker ec2-user
+
+          cd /home/ec2-user
+          wget https://bootstrap.pypa.io/get-pip.py
+          su -c "python3.7 get-pip.py --user" -s /bin/sh ec2-user
+          su -c "/home/ec2-user/.local/bin/pip3 install boto3 --user" -s /bin/sh ec2-user
+          su -c "/home/ec2-user/.local/bin/pip3 install awscli --user" -s /bin/sh ec2-user
+          su -c "/home/ec2-user/.local/bin/pip3 install kafka-python --user" -s /bin/sh ec2-user
+
+          # install AWS CLI 2 - access with aws2
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          ./aws/install -b /usr/local/bin/aws2
+          su -c "ln -s /usr/local/bin/aws2/aws ~/.local/bin/aws2" -s /bin/sh ec2-user
+
+
+          # Create dirs, get Apache Kafka 2.7.1 and unpack it
+          su -c "mkdir -p kafka271" -s /bin/sh ec2-user
+
+          cd /home/ec2-user
+          ln -s /home/ec2-user/kafka271 /home/ec2-user/kafka
+          cd kafka271
+          su -c "wget https://apache.mirror.digitalpacific.com.au/kafka/2.7.1/kafka_2.13-2.7.1.tgz" -s /bin/sh ec2-user
+          su -c "tar -xzf kafka_2.13-2.7.1.tgz --strip 1" -s /bin/sh ec2-user
+  PrometheusEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: m5.large
+      KeyName: !Ref 'KeyName'
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: { Ref: 'AWS::Region' }
+      SubnetId: !ImportValue
+        'Fn::Sub': '${VPCStackName}-PublicSubnetOne'
+      SecurityGroupIds: [ !GetAtt PrometheusInstanceSecurityGroup.GroupId ]
+      ImageId: !Ref LatestAmiId
+      Tags:
+        - Key: 'Name'
+          Value: 'PrometheusInstance'
+      UserData:
+        Fn::Base64:
+          !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install python3.7 -y
+          yum install java-1.8.0-openjdk-devel -y
+          yum install nmap-ncat -y
+          yum install git -y
+          yum erase awscli -y
+          yum install jq -y
+          amazon-linux-extras install docker -y
+          service docker start
+          usermod -a -G docker ec2-user
+
+          cd /home/ec2-user
+          wget https://bootstrap.pypa.io/get-pip.py
+          su -c "python3.7 get-pip.py --user" -s /bin/sh ec2-user
+          su -c "/home/ec2-user/.local/bin/pip3 install boto3 --user" -s /bin/sh ec2-user
+          su -c "/home/ec2-user/.local/bin/pip3 install awscli --user" -s /bin/sh ec2-user
+          su -c "/home/ec2-user/.local/bin/pip3 install kafka-python --user" -s /bin/sh ec2-user
+
+          # install AWS CLI 2 - access with aws2
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          ./aws/install -b /usr/local/bin/aws2
+          su -c "ln -s /usr/local/bin/aws2/aws ~/.local/bin/aws2" -s /bin/sh ec2-user
+
+
+          # Create dirs, get Apache Kafka 2.7.1 and unpack it
+          su -c "mkdir -p kafka271" -s /bin/sh ec2-user
+
+          cd /home/ec2-user
+          ln -s /home/ec2-user/kafka271 /home/ec2-user/kafka
+          cd kafka271
+          su -c "wget https://apache.mirror.digitalpacific.com.au/kafka/2.7.1/kafka_2.13-2.7.1.tgz" -s /bin/sh ec2-user
+          su -c "tar -xzf kafka_2.13-2.7.1.tgz --strip 1" -s /bin/sh ec2-user
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: 2012-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonMSKFullAccess
+        - arn:aws:iam::aws:policy/IAMFullAccess
+        - arn:aws:iam::aws:policy/AWSGlueSchemaRegistryFullAccess
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::aws:policy/AmazonSNSFullAccess
+        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+        - arn:aws:iam::aws:policy/AWSCertificateManagerPrivateCAFullAccess
+      Policies:
+        - PolicyName: inlinePolicyToAssumeCrossAccountSchemaRegistry
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ''
+                Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - 'arn:aws:iam::'
+                      - !Sub ${GlueSchemaRegistryAccountId}
+                      - ':role/CrossAccountSchemaRegistry'
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties: 
+      InstanceProfileName: !Join
+                            - '-'
+                            - - 'EC2MMMSKCFProfile'
+                              - !Ref 'AWS::StackName'
+      Roles:
+        - !Ref EC2Role
+Outputs:
+  KafkaClientInstanceSecurityGroup:
+    Description: Security Group associated with Kafka Client Instance
+    Value: !GetAtt KafkaClientInstanceSecurityGroup.GroupId
+    Export:
+      Name: !Sub "${AWS::StackName}-KafkaClientEC2InstanceSecurityGroupId"
+  PrometheusInstanceSecurityGroup:
+    Description: Security Group associated with Prometheus/Grafana Instance
+    Value: !GetAtt PrometheusInstanceSecurityGroup.GroupId
+    Export:
+      Name: !Sub "${AWS::StackName}-PrometheusInstanceSecurityGroupId"

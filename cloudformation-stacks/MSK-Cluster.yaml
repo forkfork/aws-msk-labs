@@ -1,0 +1,166 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  MSKKafkaVersion:
+    Type: String
+    Default: 2.6.1
+    AllowedValues:
+      - 2.6.0
+      - 2.6.1
+      - 2.7.0
+  TLSMutualAuthentication:
+    Type: String
+    Default: false
+    Description: Whether TLS Mutual Auth should be enabled for the Amazon MSK cluster.
+    AllowedValues:
+      - true
+      - false
+  ClusterConfigARN:
+    Type: String
+    Description: MSK Cluster configuration ARN
+  ClusterConfigRevisionNumber:
+    Type: Number
+    Default: 1
+    Description: MSK Cluster configuration revision number
+  PCAARN:
+    Type: String
+    AllowedPattern: 'arn:aws:acm-pca:[ap\-southeast\-2|us\-east\-1|us\-east\-2|eu\-west\-1]{14}:\d{12}:certificate-authority\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}|^$'
+    ConstraintDescription: Not a Valid ACM PCA ARN
+    Description: Provide the ARN for an ACM PCA in your account
+  VPCStack:
+    Description: The name of the VPC stack
+    Type: String
+  KafkaClientStack:
+    Description: The name of the Bastion/Kafka client instance stack
+    Type: String
+Conditions:
+  MTLS: !Equals [ !Ref TLSMutualAuthentication, true ]
+  noMTLS: !Equals [ !Ref TLSMutualAuthentication, false ]
+Resources:
+  MSKSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: MSK Security Group
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${VPCStack}-VPCID"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2181
+          ToPort: 2181
+          SourceSecurityGroupId:
+            Fn::ImportValue:
+              !Sub "${KafkaClientStack}-KafkaClientEC2InstanceSecurityGroupId"
+        - IpProtocol: tcp
+          FromPort: 9094
+          ToPort: 9094
+          SourceSecurityGroupId:
+            Fn::ImportValue:
+              !Sub "${KafkaClientStack}-KafkaClientEC2InstanceSecurityGroupId"
+        - IpProtocol: tcp
+          FromPort: 9092
+          ToPort: 9092
+          SourceSecurityGroupId:
+            Fn::ImportValue:
+              !Sub "${KafkaClientStack}-KafkaClientEC2InstanceSecurityGroupId"
+        - IpProtocol: tcp
+          FromPort: 11001
+          ToPort: 11002
+          SourceSecurityGroupId:
+            Fn::ImportValue:
+              !Sub "${KafkaClientStack}-PrometheusInstanceSecurityGroupId"
+        - IpProtocol: tcp
+          FromPort: 2181
+          ToPort: 2181
+          SourceSecurityGroupId:
+            Fn::ImportValue:
+              !Sub "${KafkaClientStack}-PrometheusInstanceSecurityGroupId"
+        - IpProtocol: tcp
+          FromPort: 9094
+          ToPort: 9094
+          SourceSecurityGroupId:
+            Fn::ImportValue:
+              !Sub "${KafkaClientStack}-PrometheusInstanceSecurityGroupId"
+        - IpProtocol: tcp
+          FromPort: 9092
+          ToPort: 9092
+          SourceSecurityGroupId:
+            Fn::ImportValue:
+              !Sub "${KafkaClientStack}-PrometheusInstanceSecurityGroupId"
+  MSKClusterMTLS:
+    Type: AWS::MSK::Cluster
+    Condition: MTLS
+    Properties:
+      BrokerNodeGroupInfo:
+        ClientSubnets:
+          - Fn::ImportValue:
+              !Sub "${VPCStack}-PrivateSubnetMSKOne"
+          - Fn::ImportValue:
+              !Sub "${VPCStack}-PrivateSubnetMSKTwo"
+          - Fn::ImportValue:
+              !Sub "${VPCStack}-PrivateSubnetMSKThree"
+        InstanceType: kafka.m5.large
+        SecurityGroups: [!GetAtt MSKSecurityGroup.GroupId]
+        StorageInfo:
+          EBSStorageInfo:
+            VolumeSize: 1000
+      ClusterName: !Join
+        - '-'
+        - - 'MSKCluster'
+          - !Ref 'AWS::StackName'
+      EncryptionInfo:
+        EncryptionInTransit:
+          ClientBroker: TLS_PLAINTEXT
+          InCluster: true
+      OpenMonitoring:
+        Prometheus:
+          JmxExporter:
+            EnabledInBroker: True
+          NodeExporter:
+            EnabledInBroker: True
+      ConfigurationInfo:
+        Arn: !Ref ClusterConfigARN
+        Revision: !Ref ClusterConfigRevisionNumber
+      ClientAuthentication:
+        Tls:
+          CertificateAuthorityArnList:
+            - !Ref PCAARN
+      EnhancedMonitoring: PER_TOPIC_PER_BROKER
+      KafkaVersion: !Ref MSKKafkaVersion
+      NumberOfBrokerNodes: 3
+  MSKClusterNoMTLS:
+    Type: AWS::MSK::Cluster
+    Condition: noMTLS
+    Properties:
+      BrokerNodeGroupInfo:
+        ClientSubnets:
+          - Fn::ImportValue:
+              !Sub "${VPCStack}-PrivateSubnetMSKOne"
+          - Fn::ImportValue:
+              !Sub "${VPCStack}-PrivateSubnetMSKTwo"
+          - Fn::ImportValue:
+              !Sub "${VPCStack}-PrivateSubnetMSKThree"
+        InstanceType: kafka.m5.large
+        SecurityGroups: [!GetAtt MSKSecurityGroup.GroupId]
+        StorageInfo:
+          EBSStorageInfo:
+            VolumeSize: 1000
+      ClusterName: !Join
+        - '-'
+        - - 'MSKCluster'
+          - !Ref 'AWS::StackName'
+      EncryptionInfo:
+        EncryptionInTransit:
+          ClientBroker: TLS_PLAINTEXT
+          InCluster: true
+      OpenMonitoring:
+        Prometheus:
+          JmxExporter:
+            EnabledInBroker: True
+          NodeExporter:
+            EnabledInBroker: True
+      ConfigurationInfo:
+        Arn: !Ref ClusterConfigARN
+        Revision: !Ref ClusterConfigRevisionNumber
+      EnhancedMonitoring: PER_TOPIC_PER_BROKER
+      KafkaVersion: !Ref MSKKafkaVersion
+      NumberOfBrokerNodes: 3
