@@ -84,7 +84,7 @@ __Note:__ _Wait for MSK Cluster stack to complete before proceeding to the next 
         ./prometheus.sh
 * Once Sshed into Prometheus instance, configure region to `ap-southeast-2`
         
-        aws configure        
+        aws configure set region ap-southeast-2       
         
 * Set the environment variables 
     * CLUSTER_ARN = AWS MSK Cluster ARN
@@ -92,7 +92,6 @@ __Note:__ _Wait for MSK Cluster stack to complete before proceeding to the next 
     * ZK = AWS MSK Cluster Zookeeper nodes endpoint
 
 ```
-aws configure set region ap-southeast-2
 sed -i 's|HOME/bin|HOME/bin:~/kafka/bin|' .bash_profile
 cat << 'EOF' >> .bash_profile
 export CLUSTER_ARN=$(aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g')
@@ -115,7 +114,7 @@ echo $ZK
         ./producer.sh
 * Once Sshed into Prometheus instance, configure region to `ap-southeast-2`
 
-        aws configure        
+        aws configure set region ap-southeast-2
 
 * Set the environment variables, follow the commands/instructions given below bash_profile
     * CLUSTER_ARN = AWS MSK Cluster ARN        
@@ -123,7 +122,6 @@ echo $ZK
     * ZK = AWS MSK Cluster Zookeeper nodes endpoint
 
 ```
-aws configure set region ap-southeast-2
 sed -i 's|HOME/bin|HOME/bin:~/kafka/bin|' .bash_profile
 cat << 'EOF' >> .bash_profile
 export CLUSTER_ARN=$(aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g')
@@ -147,7 +145,7 @@ echo $ZK
         ./consumer.sh
 * Once Sshed into Prometheus instance, configure region to `ap-southeast-2`
 
-        aws configure        
+        aws configure set region ap-southeast-2
 
 * Set the environment variables, follow the commands/instructions given below bash_profile
     * CLUSTER_ARN = AWS MSK Cluster ARN
@@ -155,7 +153,6 @@ echo $ZK
     * ZK = AWS MSK Cluster Zookeeper nodes endpoint
     
 ```
-aws configure set region ap-southeast-2
 sed -i 's|HOME/bin|HOME/bin:~/kafka/bin|' .bash_profile
 cat << 'EOF' >> .bash_profile
 export CLUSTER_ARN=$(aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g')
