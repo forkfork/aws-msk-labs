@@ -840,7 +840,7 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
             ssh -i <ec2 keypair.pem> ec2-user@<private ip of Consumer EC2 instance>
     * Make shell script executable
 
-            chmod +x producer.sh prometheus.sh consumer.sh    
+            chmod +x producer.sh consumer.sh    
 <hr>
 
 ## Producer EC2 instance Basic Setup
@@ -865,11 +865,15 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
             export PATH
 
             export CLUSTER_ARN=`aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g'`
-        
+            
             export BS=`aws kafka get-bootstrap-brokers --cluster-arn $CLUSTER_ARN|grep BootstrapBrokerString|grep 9092| cut -d ':' -f 2- | sed -e 's/\"//g' | sed -e 's/,$//'`
-        
+            
+            export BS_TLS=`aws kafka get-bootstrap-brokers --cluster-arn $CLUSTER_ARN|grep BootstrapBrokerStringTls|grep 9094| cut -d ':' -f 2- | sed -e 's/\"//g' | sed -e 's/,$//'`
+            
             export ZK=`aws kafka describe-cluster --cluster-arn $CLUSTER_ARN|grep ZookeeperConnectString|grep -v Tls|cut -d ':' -f 2-|sed 's/,$//g'|sed -e 's/\"//g'`
-        
+            
+            export ZK_TLS=`aws kafka describe-cluster --cluster-arn $CLUSTER_ARN|grep ZookeeperConnectStringTls|grep Tls|cut -d ':' -f 2-|sed 's/,$//g'|sed -e 's/\"//g'`
+            
             # save changes and exit .bash_profile
         
             # load environment variables in profile
@@ -907,10 +911,14 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
             export PATH
 
             export CLUSTER_ARN=`aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g'`
-
+            
             export BS=`aws kafka get-bootstrap-brokers --cluster-arn $CLUSTER_ARN|grep BootstrapBrokerString|grep 9092| cut -d ':' -f 2- | sed -e 's/\"//g' | sed -e 's/,$//'`
-
+            
+            export BS_TLS=`aws kafka get-bootstrap-brokers --cluster-arn $CLUSTER_ARN|grep BootstrapBrokerStringTls|grep 9094| cut -d ':' -f 2- | sed -e 's/\"//g' | sed -e 's/,$//'`
+            
             export ZK=`aws kafka describe-cluster --cluster-arn $CLUSTER_ARN|grep ZookeeperConnectString|grep -v Tls|cut -d ':' -f 2-|sed 's/,$//g'|sed -e 's/\"//g'`
+            
+            export ZK_TLS=`aws kafka describe-cluster --cluster-arn $CLUSTER_ARN|grep ZookeeperConnectStringTls|grep Tls|cut -d ':' -f 2-|sed 's/,$//g'|sed -e 's/\"//g'`
 
             # save changes and exit .bash_profile
 
@@ -927,6 +935,7 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
 <hr>
 !! WORK IN PROGRESS
                     
-    
+    aws kafka list-clusters | jq ".ClusterInfoList[0].ZookeeperConnectString"
+
     
   
