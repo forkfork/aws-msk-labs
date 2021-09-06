@@ -8,7 +8,7 @@
 ## Pre-requisite
 * Two AWS Accounts
     * Account A = AWS MSK Cluster, Kafka Consumer and Producer EC2 instances, Cloud9 Bastion host, Prometheus and Grafana EC2 instance 
-    * Account B = AWS Glue Schema Registry
+    * Account B = AWS Glue Schema Registry (optional)
 ## Let's get going
 * Login into Account A
     * Go to EC2 console and create a keypair to be able to ssh into Kafka and Prometheus EC2 instances that will be created during the workshop
@@ -40,6 +40,15 @@
             * Cloud9 environment to be used as a Bastion Host
         * Create a MSK Cluster stack = [AWS MSK Cluster Stack](cloudformation-stacks/MSK-Cluster.yaml)
             * creates an AWS MSK cluster
+        __Note:__ Select **false** for **TLSMutualAuthentication** and leave **PCAARN** blank
+            * CloudFormation parameters
+                * ClusterConfigARN = __AWS MSK Cluster Configuration ARN that you created in the previous step__
+                * ClusterConfigRevisionNumber = 1
+                * KafkaClientStack = __Kakfa Client CloudFormation Stack Name, stack that you created prior to this__
+                * MSKKafkaVersion = 2.7
+                * PCAARN = __Leave it blank__
+                * TLSMutualAuthentication = __false__
+                * VPCStack = __VPC CloudFormation Stack Name, the first stack that you created__
     * Once the cluster is up and running proceed with the next steps
     <hr> 
   
@@ -753,7 +762,7 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
 ## Pre-requisite
 * Two AWS Accounts
     * Account A = AWS MSK Cluster, Kafka Consumer and Producer EC2 instances, Cloud9 Bastion host, Prometheus and Grafana EC2 instance
-    * Account B = AWS Glue Schema Registry
+    * Account B = AWS Glue Schema Registry (optional)
 ## Let's get going
 * Login into Account A
     * Go to EC2 console and create a keypair to be able to ssh into Kafka and Prometheus EC2 instances that will be created during the workshop
