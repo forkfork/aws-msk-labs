@@ -121,12 +121,6 @@ Resources:
             su -c "wget https://apache.mirror.digitalpacific.com.au/kafka/2.7.1/kafka_2.13-2.7.1.tgz" -s /bin/sh ec2-user
             su -c "tar -xzf kafka_2.13-2.7.1.tgz --strip 1" -s /bin/sh ec2-user
 
-            # Get Confluent Community and unpack it
-            cd /home/ec2-user
-            cd confluent
-            su -c "wget http://packages.confluent.io/archive/5.4/confluent-community-5.4.1-2.12.tar.gz" -s /bin/sh ec2-user
-            su -c "tar -xzf confluent-community-5.4.1-2.12.tar.gz --strip 1" -s /bin/sh ec2-user
-
             # Initialize the Kafka cert trust store
             su -c 'find /usr/lib/jvm/ -name "cacerts" -exec cp {} /tmp/kafka.client.truststore.jks \;' -s /bin/sh ec2-user
 
@@ -185,6 +179,11 @@ Resources:
           cd kafka271
           su -c "wget https://apache.mirror.digitalpacific.com.au/kafka/2.7.1/kafka_2.13-2.7.1.tgz" -s /bin/sh ec2-user
           su -c "tar -xzf kafka_2.13-2.7.1.tgz --strip 1" -s /bin/sh ec2-user
+
+          # Initialize the Kafka cert trust store
+          su -c 'find /usr/lib/jvm/ -name "cacerts" -exec cp {} /tmp/kafka.client.truststore.jks \;' -s /bin/sh ec2-user
+
+          su -c "aws s3 cp s3://aws-streaming-artifacts/msk-lab-resources/AuthMSK-1.0-SNAPSHOT.jar /home/ec2-user" -l ec2-user
   PrometheusEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
@@ -255,10 +254,9 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonMSKFullAccess
         - arn:aws:iam::aws:policy/IAMFullAccess
         - arn:aws:iam::aws:policy/AWSGlueSchemaRegistryFullAccess
-        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
-        - arn:aws:iam::aws:policy/AmazonSNSFullAccess
-        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/AWSCertificateManagerPrivateCAFullAccess
+        - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
       Policies:
         - PolicyName: inlinePolicyToAssumeCrossAccountSchemaRegistry
           PolicyDocument:

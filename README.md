@@ -854,8 +854,10 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
 * Set the environment variables, follow the commands/instructions given below bash_profile
     * CLUSTER_ARN = AWS MSK Cluster ARN
     * BS = AWS MSK Cluster Broker nodes endpoint
+    * BS_TLS = AWS MSK Cluster Broker nodes secure (TLS) endpoint  
     * ZK = AWS MSK Cluster Zookeeper nodes endpoint
-
+    * ZK_TLS = AWS MSK Cluster Zookeeper nodes secure (TLS) endpoint
+    
             ~/ vim .bash_profile
         
             #append ~/kafka/bin to PATH
@@ -884,8 +886,52 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
             echo $CLUSTER_ARN
         
             echo $BS
+      
+            echo $BS_TLS
         
             echo $ZK
+            
+            echo $ZK_TLS
+* __Producer Truststore for encryption in-transit__
+    * As part of the set up, MSK Client CloudFormation stack has created a copy of java trust store for your producer to be able to communicate with your MSK cluster over TLS (9094 port)
+    * Let's verify if trust store exists or not.
+    * ssh into Producer EC2 instance from your Cloud9 terminal
+    
+            ./producer.sh
+            
+            pusdh /tmp
+            
+            ll              # you should see kafka.client.truststore.jks a file in there.
+            ----------------------------------------------------------------------------------------------------------------------------------------        
+            # kafka.client.truststore.jks is a copy of trust store that exists within the java virtual machine (jvm) installed on Producer EC2 instance
+            # MSK Clients CloudFormation copied the cacerts file from JVM on Producer EC2 instance to /tmp directory in kafka.client.truststore.jks file
+    
+            # This is the command that we have in the CloudFormation MSK Client stack
+            # Initialize the Kafka cert trust store
+            su -c 'find /usr/lib/jvm/ -name "cacerts" -exec cp {} /tmp/kafka.client.truststore.jks \;' -s /bin/sh ec2-user
+            
+            NOTE: You don't need to rerun this again, this is just for your knowledge. This command is copying "cacert" file from installed 
+                  Java to "kafka.client.truststore.jks" /tmp folder
+            ----------------------------------------------------------------------------------------------------------------------------------------
+            
+            popd
+            pwd      
+            # you should be back in /home/ec2-user
+      
+    * [Any truststore that trusts Amazon Trust Services also trusts the certificates of Amazon MSK brokers](https://docs.aws.amazon.com/msk/latest/developerguide/msk-encryption.html)
+    * Additional reading if you want to
+        * [How to Prepare for AWS’s Move to Its Own Certificate Authority](https://aws.amazon.com/blogs/security/how-to-prepare-for-aws-move-to-its-own-certificate-authority/)
+    * MSK Client CLoudFormation template has also downloaded __AuthMSK-1.0-SNAPSHOT.jar__ to make it easy for you to generate Key and a Certificate for your Producer and Consumer client for Mutual TLS Authemtication. We will cover this later.
+        
+            cd ~
+            ll
+            # you should see AuthMSK-1.0-SNAPSHOT.jar
+    * The sample code is available at github. [github](https://github.com/aws-samples/amazon-msk-client-authentication)
+* __Communicate with MSK Brokers over TLS__
+    * From Cloud9 terminal, ssh into your Producer EC2 instance
+        
+            ./producer.sh
+            
 <hr>
 
 ## Consumer EC2 instance Basic Setup
@@ -900,7 +946,9 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
 * Set the environment variables, follow the commands/instructions given below bash_profile
     * CLUSTER_ARN = AWS MSK Cluster ARN
     * BS = AWS MSK Cluster Broker nodes endpoint
+    * BS_TLS = AWS MSK Cluster Broker nodes secure (TLS) endpoint
     * ZK = AWS MSK Cluster Zookeeper nodes endpoint
+    * ZK_TLS = AWS MSK Cluster Zookeeper nodes secure (TLS) endpoint
 
             ~/ vim .bash_profile
             
@@ -928,10 +976,14 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
             # verify environment variables values
              
             echo $CLUSTER_ARN
-
+        
             echo $BS
 
+            echo $BS_TLS
+        
             echo $ZK
+            
+            echo $ZK_TLS
 <hr>
 !! WORK IN PROGRESS
                     
