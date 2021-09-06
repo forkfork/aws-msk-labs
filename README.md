@@ -8,7 +8,7 @@
 ## Pre-requisite
 * Two AWS Accounts
     * Account A = AWS MSK Cluster, Kafka Consumer and Producer EC2 instances, Cloud9 Bastion host, Prometheus and Grafana EC2 instance 
-    * Account B = AWS Glue Schema Registry (optional)
+    * Account B = AWS Glue Schema Registry Account (optional)
 ## Let's get going
 * Login into Account A
     * Go to EC2 console and create a keypair to be able to ssh into Kafka and Prometheus EC2 instances that will be created during the workshop
@@ -38,9 +38,12 @@
             * Kafka Producer & Consumer instances in separate Private subnets
             * Prometheus & Grafana instance in a Public subnet
             * Cloud9 environment to be used as a Bastion Host
+            * CloudFormation parameters
+               *  GlueSchemaRegistryAccountId = __you can use Account A id, if you don't have the second AWS Account__
+               *  KeyName = __EC2 keypair from Account A__
+               *  VPCStackNAme = __VPC Stack Name that you created prior to this stack__
+               *  YouIPAddress = __You can use https://checkip.amazonaws.com/ to find your laptop IP address__
         * Create a MSK Cluster stack = [AWS MSK Cluster Stack](cloudformation-stacks/MSK-Cluster.yaml)
-            * creates an AWS MSK cluster
-        __Note:__ Select **false** for **TLSMutualAuthentication** and leave **PCAARN** blank
             * CloudFormation parameters
                 * ClusterConfigARN = __AWS MSK Cluster Configuration ARN that you created in the previous step__
                 * ClusterConfigRevisionNumber = 1
@@ -792,6 +795,11 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
             * Kafka Producer & Consumer instances in separate Private subnets
             * Prometheus & Grafana instance in a Public subnet
             * Cloud9 environment to be used as a Bastion Host
+            * CloudFormation parameters
+               *  GlueSchemaRegistryAccountId = __you can use Account A id, if you don't have the second AWS Account__
+               *  KeyName = __EC2 keypair from Account A__
+               *  VPCStackNAme = __VPC Stack Name that you created prior to this stack__
+               *  YouIPAddress = __You can use https://checkip.amazonaws.com/ to find your laptop IP address__
 ## Setup AWS Certificate Manager (ACM) Private Certificate Authority (PCA)
 * Open Terminal in Cloud9 environment and ssh into Producer EC2 instance to run the following CLI command
 
