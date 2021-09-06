@@ -823,10 +823,108 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
     * PCAARN = __PCA ARN that you copied in the previous step__
     * TLSMutualAuthentication = __True__
     * VPCStack = __VPC CloudFormation Stack Name, the first stack that you created__
+* Once the cluster is up and running proceed with the next steps
+    <hr> 
 
-Once the cluster is up and running proceed with the next steps
-    
+## Cloud9 Bastion Host steps
+* Open Cloud 9 Terminal and upload ssh keypair file in cloud9 (upload local files), that you created in Account A
+* Change keypair.pem file permissions
 
+        chmod 0400 <keypair.pem>
+* Create ssh scripts to be able to ssh into Prometheus, Producer and Consumer instances
+    * producer.sh
+
+            ssh -i <ec2 keypair.pem> ec2-user@<private ip of Producer EC2 instance>
+    * consumer.sh
+
+            ssh -i <ec2 keypair.pem> ec2-user@<private ip of Consumer EC2 instance>
+    * Make shell script executable
+
+            chmod +x producer.sh prometheus.sh consumer.sh    
+<hr>
+
+## Producer EC2 instance Basic Setup
+* From Cloud9 terminal ssh into Prometheus EC2 instance
+
+        ./producer.sh
+* Once Sshed into Prometheus instance, configure region to `ap-southeast-2`
+
+        aws configure        
+
+* Set the environment variables, follow the commands/instructions given below bash_profile
+    * CLUSTER_ARN = AWS MSK Cluster ARN
+    * BS = AWS MSK Cluster Broker nodes endpoint
+    * ZK = AWS MSK Cluster Zookeeper nodes endpoint
+
+            ~/ vim .bash_profile
+        
+            #append ~/kafka/bin to PATH
+            #PATH variable should look something like
+            
+            PATH=$PATH:$HOME/.local/bin:$HOME/bin:~/kafka/bin
+            export PATH
+
+            export CLUSTER_ARN=`aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g'`
+        
+            export BS=`aws kafka get-bootstrap-brokers --cluster-arn $CLUSTER_ARN|grep BootstrapBrokerString|grep 9092| cut -d ':' -f 2- | sed -e 's/\"//g' | sed -e 's/,$//'`
+        
+            export ZK=`aws kafka describe-cluster --cluster-arn $CLUSTER_ARN|grep ZookeeperConnectString|grep -v Tls|cut -d ':' -f 2-|sed 's/,$//g'|sed -e 's/\"//g'`
+        
+            # save changes and exit .bash_profile
+        
+            # load environment variables in profile
+            ~/ source .bash_profile
+        
+            # verify environment variables values
+            
+            echo $CLUSTER_ARN
+        
+            echo $BS
+        
+            echo $ZK
+<hr>
+
+## Consumer EC2 instance Basic Setup
+
+* From Cloud9 terminal ssh into Prometheus EC2 instance
+
+        ./consumer.sh
+* Once Sshed into Prometheus instance, configure region to `ap-southeast-2`
+
+        aws configure        
+
+* Set the environment variables, follow the commands/instructions given below bash_profile
+    * CLUSTER_ARN = AWS MSK Cluster ARN
+    * BS = AWS MSK Cluster Broker nodes endpoint
+    * ZK = AWS MSK Cluster Zookeeper nodes endpoint
+
+            ~/ vim .bash_profile
+            
+            #append ~/kafka/bin to PATH
+            #PATH variable should look something like
+            
+            PATH=$PATH:$HOME/.local/bin:$HOME/bin:~/kafka/bin
+            export PATH
+
+            export CLUSTER_ARN=`aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g'`
+
+            export BS=`aws kafka get-bootstrap-brokers --cluster-arn $CLUSTER_ARN|grep BootstrapBrokerString|grep 9092| cut -d ':' -f 2- | sed -e 's/\"//g' | sed -e 's/,$//'`
+
+            export ZK=`aws kafka describe-cluster --cluster-arn $CLUSTER_ARN|grep ZookeeperConnectString|grep -v Tls|cut -d ':' -f 2-|sed 's/,$//g'|sed -e 's/\"//g'`
+
+            # save changes and exit .bash_profile
+
+            # load environment variables in profile
+            ~/ source .bash_profile
+
+            # verify environment variables values
+             
+            echo $CLUSTER_ARN
+
+            echo $BS
+
+            echo $ZK
+<hr>
 !! WORK IN PROGRESS
                     
     
