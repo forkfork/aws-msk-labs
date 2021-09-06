@@ -200,13 +200,9 @@ __Note:__ Start consumer first
             ./producer.sh
     
     * Generate / Produce traffic for __workshop-topic__ topic
-
-            echo $BS
-        
-            #copy output from the previous echo command which is list of brokers
-  
+              
             kafka-producer-perf-test.sh \
-            --producer-props bootstrap.servers=<BROKERS LIST COPIED IN PREVIOUS STEP> \
+            --producer-props bootstrap.servers="$BS" \
             acks=all --throughput 100 \
             --num-records 9999 \
             --topic workshop-topic \
