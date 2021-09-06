@@ -438,6 +438,12 @@ __Note:__ Start consumer first
 
             http://<public ip address of Prometheus Server>:9090/
     
+* In the query field 
+            
+            up
+            
+* Press "Execute"
+  
             You should see the following results - First one shows Prometheus Application is up and running, Second one shows Node_exporter is up and running which is getting metrics for Prometheus EC2 instance
             
             up{instance="10.0.0.237:9090", job="prometheus"}                     1
@@ -927,10 +933,6 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
             ll
             # you should see AuthMSK-1.0-SNAPSHOT.jar
     * The sample code is available at github. [github](https://github.com/aws-samples/amazon-msk-client-authentication)
-* __Communicate with MSK Brokers over TLS__
-    * From Cloud9 terminal, ssh into your Producer EC2 instance
-        
-            ./producer.sh
             
 <hr>
 
@@ -985,6 +987,37 @@ __NOTE:__ Wait for few mins to let CruiseControl gather the data
             
             echo $ZK_TLS
 <hr>
+## Communicate with MSK Brokers over TLS
+* From Cloud9 terminal, ssh into your Producer EC2 instance
+
+        ./producer.sh
+        
+        #verify if kafka cli commands are working. type the following command and press enter. It should print the options
+        kafka-topics.sh
+        
+* Communicate with your MSK cluster over __PALINTEXT__ and list existing topics: 
+        
+        kafka-topics.sh --bootstrap-server $BS --list
+        
+        #you should see the following topics
+        __amazon_msk_canary
+        __amazon_msk_canary_state
+        __consumer_offsets
+* Communicate with your MSK cluster over __TLS__ and list existing topics:
+        
+        cd ~
+  
+        vim client.properties
+  
+        #Add the following content
+  
+        security.protocol=SSL
+        ssl.truststore.location=/tmp/kafka.client.truststore.jks
+        ssl.truststore.password=changeit
+        
+        kafka-topics.sh --bootstrap-server $BS --list --command-config client.properties
+        
+        
 !! WORK IN PROGRESS
                     
     aws kafka list-clusters | jq ".ClusterInfoList[0].ZookeeperConnectString"
