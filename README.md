@@ -91,26 +91,22 @@ __Note:__ _Wait for MSK Cluster stack to complete before proceeding to the next 
     * BS = AWS MSK Cluster Broker nodes endpoint
     * ZK = AWS MSK Cluster Zookeeper nodes endpoint
 
-            ~/ vim .bash_profile
-            
-            export CLUSTER_ARN=`aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g'`
-            
-            export BS=`aws kafka get-bootstrap-brokers --cluster-arn $CLUSTER_ARN|grep BootstrapBrokerString|grep 9092| cut -d ':' -f 2- | sed -e 's/\"//g' | sed -e 's/,$//'`
-            
-            export ZK=`aws kafka describe-cluster --cluster-arn $CLUSTER_ARN|grep ZookeeperConnectString|grep -v Tls|cut -d ':' -f 2-|sed 's/,$//g'|sed -e 's/\"//g'`
-            
-            # save changes and exit .bash_profile
-            
-            # load environment variables in profile
-            ~/ source .bash_profile
-            
-            # verify environment variables values
-      
-            echo $CLUSTER_ARN
-            
-            echo $BS
-            
-            echo $ZK
+```
+aws configure set region ap-southeast-2
+sed -i 's|HOME/bin|HOME/bin:~/kafka/bin|' .bash_profile
+cat << 'EOF' >> .bash_profile
+export CLUSTER_ARN=$(aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g')
+export BS=$(aws kafka get-bootstrap-brokers --cluster-arn $CLUSTER_ARN|grep BootstrapBrokerString|grep 9092| cut -d ':' -f 2- | sed -e 's/\"//g' | sed -e 's/,$//')
+export ZK=$(aws kafka describe-cluster --cluster-arn $CLUSTER_ARN|grep ZookeeperConnectString|grep -v Tls|cut -d ':' -f 2-|sed 's/,$//g'|sed -e 's/\"//g')
+EOF
+
+source .bash_profile
+
+# verify environment variables values
+echo $CLUSTER_ARN
+echo $BS
+echo $ZK
+```
 <hr>
   
 ## Producer EC2 instance Basic Setup
@@ -126,32 +122,22 @@ __Note:__ _Wait for MSK Cluster stack to complete before proceeding to the next 
     * BS = AWS MSK Cluster Broker nodes endpoint
     * ZK = AWS MSK Cluster Zookeeper nodes endpoint
 
-            ~/ vim .bash_profile
-        
-            #append ~/kafka/bin to PATH
-            #PATH variable should look something like
-            
-            PATH=$PATH:$HOME/.local/bin:$HOME/bin:~/kafka/bin
-            export PATH
-      
-            export CLUSTER_ARN=`aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g'`
-        
-            export BS=`aws kafka get-bootstrap-brokers --cluster-arn $CLUSTER_ARN|grep BootstrapBrokerString|grep 9092| cut -d ':' -f 2- | sed -e 's/\"//g' | sed -e 's/,$//'`
-        
-            export ZK=`aws kafka describe-cluster --cluster-arn $CLUSTER_ARN|grep ZookeeperConnectString|grep -v Tls|cut -d ':' -f 2-|sed 's/,$//g'|sed -e 's/\"//g'`
-        
-            # save changes and exit .bash_profile
-        
-            # load environment variables in profile
-            ~/ source .bash_profile
-        
-            # verify environment variables values
-            
-            echo $CLUSTER_ARN
-        
-            echo $BS
-        
-            echo $ZK
+```
+aws configure set region ap-southeast-2
+sed -i 's|HOME/bin|HOME/bin:~/kafka/bin|' .bash_profile
+cat << 'EOF' >> .bash_profile
+export CLUSTER_ARN=$(aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g')
+export BS=$(aws kafka get-bootstrap-brokers --cluster-arn $CLUSTER_ARN|grep BootstrapBrokerString|grep 9092| cut -d ':' -f 2- | sed -e 's/\"//g' | sed -e 's/,$//')
+export ZK=$(aws kafka describe-cluster --cluster-arn $CLUSTER_ARN|grep ZookeeperConnectString|grep -v Tls|cut -d ':' -f 2-|sed 's/,$//g'|sed -e 's/\"//g')
+EOF
+
+source .bash_profile
+
+# verify environment variables values
+echo $CLUSTER_ARN
+echo $BS
+echo $ZK
+```
 <hr>
 
 ## Consumer EC2 instance Basic Setup
@@ -168,32 +154,22 @@ __Note:__ _Wait for MSK Cluster stack to complete before proceeding to the next 
     * BS = AWS MSK Cluster Broker nodes endpoint
     * ZK = AWS MSK Cluster Zookeeper nodes endpoint
     
-            ~/ vim .bash_profile
-            
-            #append ~/kafka/bin to PATH
-            #PATH variable should look something like
-            
-            PATH=$PATH:$HOME/.local/bin:$HOME/bin:~/kafka/bin
-            export PATH
-      
-            export CLUSTER_ARN=`aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g'`
+```
+aws configure set region ap-southeast-2
+sed -i 's|HOME/bin|HOME/bin:~/kafka/bin|' .bash_profile
+cat << 'EOF' >> .bash_profile
+export CLUSTER_ARN=$(aws kafka list-clusters|grep ClusterArn|cut -d ':' -f 2-|cut -d ',' -f 1 | sed -e 's/\"//g')
+export BS=$(aws kafka get-bootstrap-brokers --cluster-arn $CLUSTER_ARN|grep BootstrapBrokerString|grep 9092| cut -d ':' -f 2- | sed -e 's/\"//g' | sed -e 's/,$//')
+export ZK=$(aws kafka describe-cluster --cluster-arn $CLUSTER_ARN|grep ZookeeperConnectString|grep -v Tls|cut -d ':' -f 2-|sed 's/,$//g'|sed -e 's/\"//g')
+EOF
 
-            export BS=`aws kafka get-bootstrap-brokers --cluster-arn $CLUSTER_ARN|grep BootstrapBrokerString|grep 9092| cut -d ':' -f 2- | sed -e 's/\"//g' | sed -e 's/,$//'`
+source .bash_profile
 
-            export ZK=`aws kafka describe-cluster --cluster-arn $CLUSTER_ARN|grep ZookeeperConnectString|grep -v Tls|cut -d ':' -f 2-|sed 's/,$//g'|sed -e 's/\"//g'`
-
-            # save changes and exit .bash_profile
-
-            # load environment variables in profile
-            ~/ source .bash_profile
-
-            # verify environment variables values
-             
-            echo $CLUSTER_ARN
-
-            echo $BS
-
-            echo $ZK
+# verify environment variables values
+echo $CLUSTER_ARN
+echo $BS
+echo $ZK
+```
 <hr>
 
 ## Let's Produce & Consume Message to Kafka Topic for further use cases
